@@ -104,7 +104,8 @@ async def bettermute(interaction: discord.Interaction, user: discord.Member, dur
     if seconds is None:
         return await interaction.response.send_message("Invalid duration format.", ephemeral=True)
 
-    until = datetime.utcnow() + timedelta(seconds=seconds)
+    until = discord.utils.utcnow() + timedelta(seconds=seconds)
+
     
     try:
         await user.timeout(until, reason=reason)
