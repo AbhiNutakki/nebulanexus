@@ -4,6 +4,20 @@ from discord import app_commands
 import asyncio
 import os
 from dotenv import load_dotenv
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+class PingHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b'Pong')
+
+def run_web_server():
+    server = HTTPServer(('0.0.0.0', 8000), PingHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_web_server, daemon=True).start()
 
 
 
