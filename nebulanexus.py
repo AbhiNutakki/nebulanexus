@@ -146,4 +146,4 @@ async def betterlogremove(interaction: discord.Interaction, user: discord.Member
         f"Removed log entry #{entry_number} for {user}: {removed[0]} - {removed[1]}", ephemeral=True
     )
 
-bot.run("MTM3MzUwNzE1MDI3MzQ0NjAyOA.GhUTBc.imHYu3Ei6GnVeN5tPPvHtRFfrenasCytJKpoew")
+bot.run("MTM3MzUwNzE1MDI3MzQ0NjAyOA.GbJzv6.Hmaicfmk4f-vrOsc95IzrGhpkJP5bQNQeKV0vQ")
