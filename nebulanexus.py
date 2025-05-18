@@ -210,11 +210,13 @@ async def betterlogremove(interaction: discord.Interaction, user: discord.Member
     if not is_allowed(interaction):
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
-    logs = bot.punishment_logs.get(user.id, [])
+    logs = bot.punishment_logs.get(str(user.id), [])
+
     if not logs or entry_number < 1 or entry_number > len(logs):
         return await interaction.response.send_message("Invalid log entry number.", ephemeral=True)
 
     removed = logs.pop(entry_number - 1)
+    bot.punishment_logs[str(user.id)] = logs
     save_logs(bot.punishment_logs)
 
     await interaction.response.send_message(
