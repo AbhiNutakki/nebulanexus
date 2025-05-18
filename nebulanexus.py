@@ -8,6 +8,7 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import re
 from datetime import timedelta
+import json
 
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -28,7 +29,8 @@ class MyClient(discord.Client):
     def __init__(self):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
-        self.punishment_logs = {}
+        self.punishment_logs = load_logs()
+
         
 
     async def setup_hook(self):
@@ -39,10 +41,25 @@ bot = MyClient()
 ALLOWED_ALL = ["moderator", "trainee", "administrator","owner :3"]
 ALLOWED_ELEVATED = ["moderator", "administrator"]
 
+LOG_FILE = "logs.json"
+
+def load_logs():
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_logs(logs):
+    with open(LOG_FILE, "w") as f:
+        json.dump(logs, f, indent=2)
+
 def log_punishment(bot, user_id, action, reason, punisher):
+    user_id = str(user_id) 
     if user_id not in bot.punishment_logs:
         bot.punishment_logs[user_id] = []
     bot.punishment_logs[user_id].append((action, reason, punisher))
+    save_logs(bot.punishment_logs)
+
 
 
 def parse_duration(duration_str):
@@ -182,6 +199,8 @@ async def betterlogremove(interaction: discord.Interaction, user: discord.Member
         return await interaction.response.send_message("Invalid log entry number.", ephemeral=True)
 
     removed = logs.pop(entry_number - 1)
+    save_logs(bot.punishment_logs)
+
     await interaction.response.send_message(
         f"Removed log entry #{entry_number} for {user}: {removed[0]} - {removed[1]}", ephemeral=True
     )
