@@ -6,6 +6,8 @@ import os
 from dotenv import load_dotenv
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import re
+from datetime import timedelta
 
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -18,8 +20,6 @@ def run_web_server():
     server.serve_forever()
 
 threading.Thread(target=run_web_server, daemon=True).start()
-
-
 
 intents = discord.Intents.default()
 intents.members = True
@@ -38,6 +38,28 @@ bot = MyClient()
 
 ALLOWED_ALL = ["moderator", "trainee", "administrator","owner :3"]
 ALLOWED_ELEVATED = ["moderator", "administrator"]
+
+def log_punishment(bot, user_id, action, reason, punisher):
+    if user_id not in bot.punishment_logs:
+        bot.punishment_logs[user_id] = []
+    bot.punishment_logs[user_id].append((action, reason, punisher))
+
+
+def parse_duration(duration_str):
+    match = re.match(r"(\d+)([smhd])", duration_str.lower())
+    if not match:
+        return None
+
+    value, unit = int(match.group(1)), match.group(2)
+    if unit == "s":
+        return value
+    elif unit == "m":
+        return value * 60
+    elif unit == "h":
+        return value * 60 * 60
+    elif unit == "d":
+        return value * 60 * 60 * 24
+    return None
 
 def has_role(user: discord.Member, roles: list[str]) -> bool:
     return any(role.name.lower() in roles for role in user.roles)
@@ -67,20 +89,24 @@ async def betterban(interaction: discord.Interaction, user: discord.Member, reas
     
     try:
         await send_dm(user, "You have been banned", reason)
-        log_punishment(bot, user.id, "Ban", reason)
+        log_punishment(bot, user.id, "Ban", reason, interaction.user.mention)
         await user.ban(reason=reason)
         await interaction.response.send_message(f"{user} has been banned.", ephemeral=True)
     except discord.Forbidden:
         await interaction.response.send_message("❌ I don’t have permission to ban this user.", ephemeral=True)
 
-@bot.tree.command(name="bettermute", description="Mute a user for a number of seconds")
-@app_commands.describe(user="User to mute", duration="Duration in seconds", reason="Reason for mute")
-async def bettermute(interaction: discord.Interaction, user: discord.Member, duration: int, reason: str):
+@bot.tree.command(name="bettermute", description="Mute a user for a duration")
+@app_commands.describe(user="User to mute", duration="Duration (e.g., 10s, 5m, 2h, 1d)", reason="Reason for mute")
+async def bettermute(interaction: discord.Interaction, user: discord.Member, duration: str, reason: str):
     if not is_allowed(interaction):
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
-    await send_dm(user, f"You have been muted for {duration} seconds", reason)
-    log_punishment(bot, user.id, f"Mute ({duration}s)", reason)
+    seconds = parse_duration(duration)
+    if seconds is None:
+        return await interaction.response.send_message("Invalid duration format", ephemeral=True)
+
+    await send_dm(user, f"You have been muted for {duration}", reason)
+    log_punishment(bot, user.id, f"Mute ({duration})", reason, interaction.user.mention)
 
     muted_role = discord.utils.get(interaction.guild.roles, name="Muted")
     if not muted_role:
@@ -89,10 +115,11 @@ async def bettermute(interaction: discord.Interaction, user: discord.Member, dur
             await channel.set_permissions(muted_role, send_messages=False)
 
     await user.add_roles(muted_role)
-    await interaction.response.send_message(f"{user} has been muted for {duration} seconds.", ephemeral=True)
+    await interaction.response.send_message(f"{user} has been muted for {duration}.", ephemeral=True)
 
-    await asyncio.sleep(duration)
+    await asyncio.sleep(seconds)
     await user.remove_roles(muted_role)
+
 
 @bot.tree.command(name="betterwarn", description="Warn a user with a reason")
 @app_commands.describe(user="User to warn", reason="Reason for warning")
@@ -101,7 +128,7 @@ async def betterwarn(interaction: discord.Interaction, user: discord.Member, rea
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
     await send_dm(user, "You have been warned", reason)
-    log_punishment(bot, user.id, "Warn", reason)
+    log_punishment(bot, user.id, "Warn", reason, interaction.user.mention)
     await interaction.response.send_message(f"{user} has been warned.", ephemeral=True)
 
 @bot.tree.command(name="betterlogs", description="See all punishments for a user")
@@ -115,8 +142,8 @@ async def betterlog(interaction: discord.Interaction, user: discord.Member):
         return await interaction.response.send_message("No logs found for this user.", ephemeral=True)
 
     embed = discord.Embed(title=f"Punishment Log for {user}", color=discord.Color.red())
-    for i, (action, reason) in enumerate(logs, 1):
-        embed.add_field(name=f"{i}. {action}", value=reason, inline=False)
+    for i, (action, reason, punisher) in enumerate(logs, 1):
+        embed.add_field(name=f"{i}. {action}", value=f"Reason: {reason}\nBy: {punisher}", inline=False)
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
