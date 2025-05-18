@@ -161,7 +161,7 @@ async def betterlog(interaction: discord.Interaction, user: discord.Member):
 
     await interaction.response.defer(ephemeral=True) 
 
-    logs = bot.punishment_logs.get(user.id, [])
+    logs = bot.punishment_logs.get(str(user.id), [])
     if not logs:
         await interaction.followup.send("No logs found for this user.", ephemeral=True)
         return
