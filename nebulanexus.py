@@ -10,6 +10,16 @@ import re
 from datetime import timedelta
 import json
 
+def load_logs():
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_logs(logs):
+    with open(LOG_FILE, "w") as f:
+        json.dump(logs, f, indent=2)
+
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -43,15 +53,7 @@ ALLOWED_ELEVATED = ["moderator", "administrator"]
 
 LOG_FILE = "logs.json"
 
-def load_logs():
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "r") as f:
-            return json.load(f)
-    return {}
 
-def save_logs(logs):
-    with open(LOG_FILE, "w") as f:
-        json.dump(logs, f, indent=2)
 
 def log_punishment(bot, user_id, action, reason, punisher):
     user_id = str(user_id) 
