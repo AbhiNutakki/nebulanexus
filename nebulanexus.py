@@ -10,6 +10,9 @@ import re
 from datetime import timedelta
 import json
 
+LOG_FILE = "logs.json"
+
+
 def load_logs():
     if os.path.exists(LOG_FILE):
         with open(LOG_FILE, "r") as f:
@@ -51,7 +54,6 @@ bot = MyClient()
 ALLOWED_ALL = ["moderator", "trainee", "administrator","owner :3"]
 ALLOWED_ELEVATED = ["moderator", "administrator"]
 
-LOG_FILE = "logs.json"
 
 
 
