@@ -92,18 +92,20 @@ async def betterban(interaction: discord.Interaction, user: discord.Member, reas
 
 from datetime import datetime, timedelta
 
+from datetime import datetime, timedelta
+
 @bot.tree.command(name="bettermute", description="Timeout a user for a duration")
-@app_commands.describe(user="User to timeout", duration="Duration (e.g., 10s, 5m, 2h, 1d)", reason="Reason for timeout")
+@app_commands.describe(user="User to timeout", duration="e.g. 10s, 5m, 1h, 2d", reason="Reason")
 async def bettermute(interaction: discord.Interaction, user: discord.Member, duration: str, reason: str):
     if not is_allowed(interaction):
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
     seconds = parse_duration(duration)
     if seconds is None:
-        return await interaction.response.send_message("Invalid duration format (use 10s, 5m, 1h, 1d)", ephemeral=True)
+        return await interaction.response.send_message("Invalid duration format.", ephemeral=True)
 
     until = datetime.utcnow() + timedelta(seconds=seconds)
-
+    
     try:
         await user.timeout(until, reason=reason)
         await send_dm(user, f"You have been timed out for {duration}", reason)
@@ -111,7 +113,6 @@ async def bettermute(interaction: discord.Interaction, user: discord.Member, dur
         await interaction.response.send_message(f"{user} has been timed out for {duration}.", ephemeral=True)
     except discord.Forbidden:
         await interaction.response.send_message("❌ I don’t have permission to timeout this user.", ephemeral=True)
-
 
 @bot.tree.command(name="betterwarn", description="Warn a user with a reason")
 @app_commands.describe(user="User to warn", reason="Reason for warning")
