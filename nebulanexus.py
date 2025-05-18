@@ -9,19 +9,14 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import re
 from datetime import timedelta
 import json
+import firebase_admin
+from firebase_admin import credentials, firestore
 
-LOG_FILE = "logs.json"
+cred = credentials.Certificate("firebase_key.json")
+firebase_admin.initialize_app(cred)
 
+db = firestore.client()
 
-def load_logs():
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_logs(logs):
-    with open(LOG_FILE, "w") as f:
-        json.dump(logs, f, indent=2)
 
 class PingHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -42,7 +37,6 @@ class MyClient(discord.Client):
     def __init__(self):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
-        self.punishment_logs = load_logs()
 
         
 
@@ -57,12 +51,19 @@ ALLOWED_ELEVATED = ["moderator", "administrator"]
 
 
 
-def log_punishment(bot, user_id, action, reason, punisher):
-    user_id = str(user_id) 
-    if user_id not in bot.punishment_logs:
-        bot.punishment_logs[user_id] = []
-    bot.punishment_logs[user_id].append((action, reason, punisher))
-    save_logs(bot.punishment_logs)
+def log_punishment_to_firestore(user_id, action, reason, punisher):
+    db.collection("punishment_logs").add({
+        "user_id": str(user_id),
+        "action": action,
+        "reason": reason,
+        "punisher": punisher,
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
+def get_logs_from_firestore(user_id):
+    logs_ref = db.collection("punishment_logs").where("user_id", "==", str(user_id)).stream()
+    return [doc.to_dict() for doc in logs_ref]
+
+
 
 
 
@@ -105,8 +106,8 @@ async def betterban(interaction: discord.Interaction, user: discord.Member, reas
     
     try:
         await send_dm(user, "You have been banned", reason)
-        log_punishment(bot, user.id, "Ban", reason, interaction.user.mention)
-        save_logs(bot.punishment_logs)
+        log_punishment_to_firestore(user.id, "Ban", reason, interaction.user.mention)
+
 
         await user.ban(reason=reason)
         await interaction.response.send_message(f"{user} has been banned.", ephemeral=True)
@@ -133,8 +134,9 @@ async def bettermute(interaction: discord.Interaction, user: discord.Member, dur
     try:
         await user.timeout(until, reason=reason)
         await send_dm(user, f"You have been timed out for {duration}", reason)
-        log_punishment(bot, user.id, f"Timeout ({duration})", reason, interaction.user.mention)
-        save_logs(bot.punishment_logs)
+
+        log_punishment_to_firestore(user.id, f"Timeout ({duration})", reason, interaction.user.mention)
+
 
         await interaction.response.send_message(f"{user} has been timed out for {duration}.", ephemeral=True)
     except discord.Forbidden:
@@ -147,8 +149,8 @@ async def betterwarn(interaction: discord.Interaction, user: discord.Member, rea
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
     await send_dm(user, "You have been warned", reason)
-    log_punishment(bot, user.id, "Warn", reason, interaction.user.mention)
-    save_logs(bot.punishment_logs)
+    log_punishment_to_firestore(user.id, "Warn", reason, interaction.user.mention)
+
 
     await interaction.response.send_message(f"{user} has been warned.", ephemeral=True)
 
@@ -161,16 +163,21 @@ async def betterlog(interaction: discord.Interaction, user: discord.Member):
 
     await interaction.response.defer(ephemeral=True) 
 
-    logs = bot.punishment_logs.get(str(user.id), [])
+    logs = get_logs_from_firestore(user.id)
     if not logs:
         await interaction.followup.send("No logs found for this user.", ephemeral=True)
         return
 
     embed = discord.Embed(title=f"Punishment Log for {user}", color=discord.Color.red())
-    for i, (action, reason, punisher) in enumerate(logs, 1):
-        embed.add_field(name=f"{i}. {action}", value=f"Reason: {reason}\nBy: {punisher}", inline=False)
+    for i, log in enumerate(logs, 1):
+        embed.add_field(
+            name=f"{i}. {log['action']}",
+            value=f"Reason: {log['reason']}\nBy: {log['punisher']}",
+            inline=False
+    )
 
-    await interaction.followup.send(embed=embed, ephemeral=True) 
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
 
 
 
@@ -210,18 +217,17 @@ async def betterlogremove(interaction: discord.Interaction, user: discord.Member
     if not is_allowed(interaction):
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
-    logs = bot.punishment_logs.get(str(user.id), [])
-
+    logs = list(db.collection("punishment_logs").where("user_id", "==", str(user.id)).stream())
     if not logs or entry_number < 1 or entry_number > len(logs):
         return await interaction.response.send_message("Invalid log entry number.", ephemeral=True)
 
-    removed = logs.pop(entry_number - 1)
-    bot.punishment_logs[str(user.id)] = logs
-    save_logs(bot.punishment_logs)
+    log_to_delete = logs[entry_number - 1]
+    db.collection("punishment_logs").document(log_to_delete.id).delete()
 
     await interaction.response.send_message(
-        f"Removed log entry #{entry_number} for {user}: {removed[0]} - {removed[1]}", ephemeral=True
+        f"Removed log entry #{entry_number} for {user}.", ephemeral=True
     )
+
 
 load_dotenv()
 bot.run(os.getenv("DISCORD_TOKEN"))
