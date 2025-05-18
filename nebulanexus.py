@@ -90,30 +90,27 @@ async def betterban(interaction: discord.Interaction, user: discord.Member, reas
     except discord.Forbidden:
         await interaction.response.send_message("❌ I don’t have permission to ban this user.", ephemeral=True)
 
-@bot.tree.command(name="bettermute", description="Mute a user for a duration")
-@app_commands.describe(user="User to mute", duration="Duration (e.g., 10s, 5m, 2h, 1d)", reason="Reason for mute")
+from datetime import datetime, timedelta
+
+@bot.tree.command(name="bettermute", description="Timeout a user for a duration")
+@app_commands.describe(user="User to timeout", duration="Duration (e.g., 10s, 5m, 2h, 1d)", reason="Reason for timeout")
 async def bettermute(interaction: discord.Interaction, user: discord.Member, duration: str, reason: str):
     if not is_allowed(interaction):
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
     seconds = parse_duration(duration)
     if seconds is None:
-        return await interaction.response.send_message("Invalid duration format", ephemeral=True)
+        return await interaction.response.send_message("Invalid duration format (use 10s, 5m, 1h, 1d)", ephemeral=True)
 
-    await send_dm(user, f"You have been muted for {duration}", reason)
-    log_punishment(bot, user.id, f"Mute ({duration})", reason, interaction.user.mention)
+    until = datetime.utcnow() + timedelta(seconds=seconds)
 
-    muted_role = discord.utils.get(interaction.guild.roles, name="Muted")
-    if not muted_role:
-        muted_role = await interaction.guild.create_role(name="Muted")
-        for channel in interaction.guild.channels:
-            await channel.set_permissions(muted_role, send_messages=False)
-
-    await user.add_roles(muted_role)
-    await interaction.response.send_message(f"{user} has been muted for {duration}.", ephemeral=True)
-
-    await asyncio.sleep(seconds)
-    await user.remove_roles(muted_role)
+    try:
+        await user.timeout(until, reason=reason)
+        await send_dm(user, f"You have been timed out for {duration}", reason)
+        log_punishment(bot, user.id, f"Timeout ({duration})", reason, interaction.user.mention)
+        await interaction.response.send_message(f"{user} has been timed out for {duration}.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don’t have permission to timeout this user.", ephemeral=True)
 
 
 @bot.tree.command(name="betterwarn", description="Warn a user with a reason")
