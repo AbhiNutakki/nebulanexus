@@ -70,11 +70,6 @@ def is_allowed(interaction: discord.Interaction):
 def is_elevated(interaction: discord.Interaction):
     return has_role(interaction.user, ALLOWED_ELEVATED) or interaction.user.guild_permissions.administrator
 
-def log_punishment(bot, user_id, action, reason):
-    if user_id not in bot.punishment_logs:
-        bot.punishment_logs[user_id] = []
-    bot.punishment_logs[user_id].append((action, reason))
-
 async def send_dm(user: discord.Member, title: str, reason: str):
     try:
         await user.send(f"**{title}**\nReason: {reason}")
