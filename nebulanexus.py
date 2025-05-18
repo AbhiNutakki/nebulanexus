@@ -106,6 +106,8 @@ async def betterban(interaction: discord.Interaction, user: discord.Member, reas
     try:
         await send_dm(user, "You have been banned", reason)
         log_punishment(bot, user.id, "Ban", reason, interaction.user.mention)
+        save_logs(bot.punishment_logs)
+
         await user.ban(reason=reason)
         await interaction.response.send_message(f"{user} has been banned.", ephemeral=True)
     except discord.Forbidden:
@@ -132,6 +134,8 @@ async def bettermute(interaction: discord.Interaction, user: discord.Member, dur
         await user.timeout(until, reason=reason)
         await send_dm(user, f"You have been timed out for {duration}", reason)
         log_punishment(bot, user.id, f"Timeout ({duration})", reason, interaction.user.mention)
+        save_logs(bot.punishment_logs)
+
         await interaction.response.send_message(f"{user} has been timed out for {duration}.", ephemeral=True)
     except discord.Forbidden:
         await interaction.response.send_message("❌ I don’t have permission to timeout this user.", ephemeral=True)
@@ -144,6 +148,8 @@ async def betterwarn(interaction: discord.Interaction, user: discord.Member, rea
 
     await send_dm(user, "You have been warned", reason)
     log_punishment(bot, user.id, "Warn", reason, interaction.user.mention)
+    save_logs(bot.punishment_logs)
+
     await interaction.response.send_message(f"{user} has been warned.", ephemeral=True)
 
 @bot.tree.command(name="betterlogs", description="See all punishments for a user")
