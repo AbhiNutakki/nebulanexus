@@ -152,15 +152,18 @@ async def betterlog(interaction: discord.Interaction, user: discord.Member):
     if not is_allowed(interaction):
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
+    await interaction.response.defer(ephemeral=True)  # ⬅️ Add this line to extend time
+
     logs = bot.punishment_logs.get(user.id, [])
     if not logs:
-        return await interaction.response.send_message("No logs found for this user.", ephemeral=True)
+        return await interaction.followup.send("No logs found for this user.", ephemeral=True)
 
     embed = discord.Embed(title=f"Punishment Log for {user}", color=discord.Color.red())
     for i, (action, reason, punisher) in enumerate(logs, 1):
         embed.add_field(name=f"{i}. {action}", value=f"Reason: {reason}\nBy: {punisher}", inline=False)
 
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
 
 @bot.tree.command(name="betterunmute", description="Unmute a user")
 @app_commands.describe(user="User to unmute")
