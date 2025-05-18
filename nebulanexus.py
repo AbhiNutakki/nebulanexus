@@ -5,8 +5,6 @@ import asyncio
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-bot.run(os.getenv("DISCORD_TOKEN"))
 
 
 intents = discord.Intents.default()
@@ -153,3 +151,5 @@ async def betterlogremove(interaction: discord.Interaction, user: discord.Member
         f"Removed log entry #{entry_number} for {user}: {removed[0]} - {removed[1]}", ephemeral=True
     )
 
+load_dotenv()
+bot.run(os.getenv("DISCORD_TOKEN"))
