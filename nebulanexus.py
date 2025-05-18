@@ -2,6 +2,12 @@ import discord
 from discord.ext import tasks
 from discord import app_commands
 import asyncio
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+bot.run(os.getenv("DISCORD_TOKEN"))
+
 
 intents = discord.Intents.default()
 intents.members = True
@@ -11,6 +17,7 @@ class MyClient(discord.Client):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
         self.punishment_logs = {}
+        
 
     async def setup_hook(self):
         await self.tree.sync()
@@ -146,4 +153,3 @@ async def betterlogremove(interaction: discord.Interaction, user: discord.Member
         f"Removed log entry #{entry_number} for {user}: {removed[0]} - {removed[1]}", ephemeral=True
     )
 
-bot.run("MTM3MzUwNzE1MDI3MzQ0NjAyOA.GbJzv6.Hmaicfmk4f-vrOsc95IzrGhpkJP5bQNQeKV0vQ")
