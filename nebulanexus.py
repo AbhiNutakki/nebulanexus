@@ -332,7 +332,7 @@ async def betterunban(interaction: discord.Interaction, user_id: str):
         return await interaction.response.send_message("You don’t have permission to unban users.", ephemeral=True)
 
     try:
-        banned_users = await interaction.guild.bans()
+        banned_users = [entry async for entry in interaction.guild.bans()]
         user_id = int(user_id)
         for ban_entry in banned_users:
             if ban_entry.user.id == user_id:
