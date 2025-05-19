@@ -11,6 +11,8 @@ from datetime import timedelta
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
+from discord.ui import Button, View
+from collections import defaultdict
 
 
 firebase_json = json.loads(os.environ["FIREBASE_KEY"])
@@ -47,6 +49,8 @@ class MyClient(discord.Client):
         await self.tree.sync()
 
 bot = MyClient()
+ban_votes = defaultdict(lambda: {"trust": 0, "voters": set(), "reason": "", "user": None})
+
 
 ALLOWED_ALL = ["moderator", "trainee", "administrator","owner :3"]
 ALLOWED_ELEVATED = ["moderator", "administrator"]
@@ -100,10 +104,21 @@ async def send_dm(user: discord.Member, title: str, reason: str):
         await user.send(f"**{title}**\nReason: {reason}")
     except:
         pass
+
+def get_trust_weight(member: discord.Member) -> int:
+    for role in member.roles:
+        name = role.name.lower()
+        if name == "owner :3":
+            return 3
+        elif name == "administrator":
+            return 2
+        elif name == "moderator":
+            return 1
+    return 0
+
     
 @bot.event
 async def on_member_join(member):
-    # Get the general-₊⊹ channel by name
     channel = discord.utils.get(member.guild.text_channels, name="general-₊⊹")
     if channel is None:
         print("Welcome channel not found.")
@@ -118,6 +133,62 @@ async def on_member_join(member):
     embed.set_footer(text=f"Member #{len(member.guild.members)}")
 
     await channel.send(embed=embed)
+
+@bot.tree.command(name="betterbanrequest", description="Request to ban a user (trainee only)")
+@app_commands.describe(user="User to request a ban for", reason="Reason for the ban")
+async def betterbanrequest(interaction: discord.Interaction, user: discord.Member, reason: str):
+    if not has_role(interaction.user, ["trainee"]):
+        return await interaction.response.send_message("Only trainees can use this command.", ephemeral=True)
+
+    ban_votes[user.id] = {"trust": 0, "voters": set(), "reason": reason, "user": user}
+
+    view = View(timeout=None)
+
+    async def vote_callback(interaction_vote: discord.Interaction, vote: str):
+        if interaction_vote.user.id in ban_votes[user.id]["voters"]:
+            return await interaction_vote.response.send_message("You've already voted.", ephemeral=True)
+
+        trust = get_trust_weight(interaction_vote.user)
+        if trust == 0:
+            return await interaction_vote.response.send_message("You don't have permission to vote.", ephemeral=True)
+
+        if vote == "yes":
+            ban_votes[user.id]["trust"] += trust
+        ban_votes[user.id]["voters"].add(interaction_vote.user.id)
+
+        if ban_votes[user.id]["trust"] >= 2:
+            await user.ban(reason=ban_votes[user.id]["reason"])
+            for voter in ban_votes[user.id]["voters"]:
+                try:
+                    member = await interaction.guild.fetch_member(voter)
+                    await member.send(f"{user} has been banned successfully.")
+                except:
+                    pass
+            del ban_votes[user.id]
+
+        await interaction_vote.response.send_message(f"You voted **{vote.upper()}**.", ephemeral=True)
+
+    yes_button = Button(label="✅ Yes", style=discord.ButtonStyle.green)
+    yes_button.callback = lambda i: vote_callback(i, "yes")
+    no_button = Button(label="❌ No", style=discord.ButtonStyle.red)
+    no_button.callback = lambda i: vote_callback(i, "no")
+
+    view.add_item(yes_button)
+    view.add_item(no_button)
+
+    # DM eligible voters
+    for member in interaction.guild.members:
+        if get_trust_weight(member) > 0:
+            try:
+                await member.send(
+                    f"🚨 Ban Request\n\nUser: {user}\nReason: {reason}\nVote below:",
+                    view=view
+                )
+            except:
+                pass
+
+    await interaction.response.send_message("Ban request sent to eligible voters.", ephemeral=True)
+
 
 
 @bot.tree.command(name="betterban", description="Ban a user with a reason")
