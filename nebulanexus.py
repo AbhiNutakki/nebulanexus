@@ -160,7 +160,14 @@ async def betterbanrequest(interaction: discord.Interaction, user: discord.Membe
     view = View(timeout=None)
 
     async def vote_callback(interaction_vote: discord.Interaction, vote: str):
-        guild_member = await interaction_vote.guild.fetch_member(interaction_vote.user.id)
+        guild = discord.utils.get(bot.guilds) 
+        if not guild:
+            return await interaction_vote.response.send_message("Bot is not in a guild.", ephemeral=True)
+
+        guild_member = guild.get_member(interaction_vote.user.id)
+        if not guild_member:
+            guild_member = await guild.fetch_member(interaction_vote.user.id)
+
 
         if interaction_vote.user.id in ban_votes[user.id]["voters"]:
             return await interaction_vote.response.send_message("❗ You've already voted.", ephemeral=True)
