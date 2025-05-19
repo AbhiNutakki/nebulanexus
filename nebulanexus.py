@@ -100,6 +100,25 @@ async def send_dm(user: discord.Member, title: str, reason: str):
         await user.send(f"**{title}**\nReason: {reason}")
     except:
         pass
+    
+@bot.event
+async def on_member_join(member):
+    # Get the general-₊⊹ channel by name
+    channel = discord.utils.get(member.guild.text_channels, name="general-₊⊹")
+    if channel is None:
+        print("Welcome channel not found.")
+        return
+
+    embed = discord.Embed(
+        title=f"Welcome, {member.name}!",
+        description="We’re glad to have you here 🎉",
+        color=discord.Color.green()
+    )
+    embed.set_image(url=member.display_avatar.url)  
+    embed.set_footer(text=f"Member #{len(member.guild.members)}")
+
+    await channel.send(embed=embed)
+
 
 @bot.tree.command(name="betterban", description="Ban a user with a reason")
 @app_commands.describe(user="User to ban", reason="Reason for ban")
