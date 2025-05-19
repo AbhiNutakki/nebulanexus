@@ -184,18 +184,21 @@ async def betterlog(interaction: discord.Interaction, user: discord.Member):
 
 
 
-@bot.tree.command(name="betterunmute", description="Unmute a user")
+@bot.tree.command(name="betterunmute", description="Unmute (remove timeout) from a user")
 @app_commands.describe(user="User to unmute")
 async def betterunmute(interaction: discord.Interaction, user: discord.Member):
     if not is_allowed(interaction):
         return await interaction.response.send_message("You don’t have permission.", ephemeral=True)
 
-    muted_role = discord.utils.get(interaction.guild.roles, name="Muted")
-    if muted_role in user.roles:
-        await user.remove_roles(muted_role)
-        await interaction.response.send_message(f"{user} has been unmuted.", ephemeral=True)
-    else:
-        await interaction.response.send_message(f"{user} is not muted.", ephemeral=True)
+    try:
+        # Remove timeout by setting timeout_until to None
+        await user.timeout(None, reason="Timeout manually removed")
+        await interaction.response.send_message(f"{user} has been unmuted (timeout removed).", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ I don’t have permission to unmute this user.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"Error: {e}", ephemeral=True)
+
 
 @bot.tree.command(name="betterunban", description="Unban a user by ID")
 @app_commands.describe(user_id="The user ID to unban")
