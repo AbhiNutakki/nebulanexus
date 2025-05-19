@@ -12,7 +12,10 @@ import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-cred = credentials.Certificate("firebase_key.json")
+
+firebase_json = json.loads(os.environ["FIREBASE_KEY"])
+cred = credentials.Certificate(firebase_json)
+
 firebase_admin.initialize_app(cred)
 
 db = firestore.client()
