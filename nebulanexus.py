@@ -195,8 +195,17 @@ async def betterbanrequest(interaction: discord.Interaction, user: discord.Membe
         # Handle final decision
         if yes >= 2:
             try:
-                await user.ban(reason=ban_votes[user.id]["reason"])
-                await interaction_vote.channel.send(f"🔨 {user} has been **banned** with {yes} trust.")
+                reason = ban_votes[user.id]["reason"]
+                requester = interaction.user  
+
+                try:
+                    await send_dm(user, "You have been banned", reason)
+                except:
+                    pass 
+
+                log_punishment_to_firestore(user.id, "Ban", reason, requester.mention)
+                await user.ban(reason=reason)
+                await interaction_vote.channel.send(f"🔨 {user} has been **banned** with {yes} trust. Reason: {reason}")
             except:
                 await interaction_vote.channel.send("❌ Failed to ban user. Missing permissions.")
             del ban_votes[user.id]
