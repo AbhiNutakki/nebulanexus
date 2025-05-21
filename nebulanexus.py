@@ -48,12 +48,14 @@ class MyClient(discord.Client):
     async def setup_hook(self):
         await self.tree.sync()
 
-        # Delay slightly to ensure bot is fully connected to guild
-        await asyncio.sleep(5)
-        
-        guild = discord.utils.get(self.guilds)
-        if not guild:
-            print("❌ No guild found.")
+        await self.wait_until_ready()  # Wait for full guild/member cache
+
+        # Replace this with your actual server (guild) ID
+        GUILD_ID = 1372338054077087755  # 👈 Replace with your server's ID
+
+        guild = self.get_guild(GUILD_ID)
+        if guild is None:
+            print("❌ Guild not found with specified ID.")
             return
 
         duet = discord.utils.get(guild.members, name="_duet_")
